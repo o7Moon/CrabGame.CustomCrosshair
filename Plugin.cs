@@ -19,6 +19,7 @@ namespace CustomCrosshair
         ConfigEntry<int> length;
         ConfigEntry<int> width;
         ConfigEntry<string> color;
+        ConfigEntry<bool> circle_dot;
         public override void Load()
         {
             instance = this;
@@ -53,9 +54,24 @@ namespace CustomCrosshair
                 "#FFFFFF",
                 "the color of the crosshair"
             );
+            circle_dot = Config.Bind<bool>(
+                "Crosshair",
+                "circle",
+                false,
+                "if true, the dot texture is a circle"
+            );
             Harmony.CreateAndPatchAll(typeof(Plugin));
             // Plugin startup logic
             Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+        }
+        public static Texture Circle() {
+            var text = new Texture2D(512,512, TextureFormat.RGBA32, false);
+            var stream = typeof(Plugin).Assembly.GetManifestResourceStream("CustomCrosshair.Circle.png");
+            var len = stream.Length;
+            var buf = new byte[len];
+            stream.Read(buf,0, (int)len);
+            ImageConversion.LoadImage(text, buf); 
+            return text;
         }
         [HarmonyPatch(typeof(GameUI),nameof(GameUI.Start))]
         [HarmonyPostfix]
@@ -75,7 +91,12 @@ namespace CustomCrosshair
 
             Color color = new Color(1,1,1,1);
             ColorUtility.TryParseHtmlString(instance.color.Value, out color);
-            cross.transform.GetChild(0).GetComponent<RawImage>().color = color;
+            var dot = cross.transform.GetChild(0).GetComponent<RawImage>();
+            dot.color = color;
+            if (instance.circle_dot.Value) {
+                var texture = Circle();
+                dot.texture = texture;
+            }
             // the bars are children 1-4, and they have another nested gameobject with the rawimage
             for (int i = 1; i < 5; i++){
                 cross.transform.GetChild(i).GetChild(0).GetComponent<RawImage>().color = color;
